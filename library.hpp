@@ -35,6 +35,13 @@ public:
 
 };
 
+template <size_t N, size_t M, typename T>
+Matrix<N, M, T> operator+(const Matrix<N, M, T>&, const Matrix<N, M, T>&);
+
+
+template <size_t N, size_t M, typename T>
+Matrix<N, M, T> operator*(const Matrix<N, M, T>&, const T&);
+
 
 
 
