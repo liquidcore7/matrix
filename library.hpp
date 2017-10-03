@@ -26,9 +26,22 @@ public:
         this->_grid = std::move(r._grid);
     }
 
+    template <typename Fnc>
+    // functor should be of the following signature: void functor(T&)
+    // example: [] (T& a) {a += 15}
+    void apply(const Fnc&);
+
 
 
 };
+
+
+
+
+
+/* ********************************************************************************
+ * IMPLEMENTATION
+ * ***************************************************************************** */
 
 template <size_t N, size_t M, typename T>
 Matrix::Matrix(std::istream &is)
@@ -47,9 +60,17 @@ Matrix::Matrix(const std::string &s)
 template <size_t N, size_t M, typename T>
 Matrix::Matrix(const T &init)
 {
-    for (size_t i = 0; i < N; ++i)
-        for (size_t j = 0; j < M; ++j)
-            _grid[i][j] = init;
+    for(auto &row : _grid)
+        for (auto &cell : row)
+            cell = init;
+}
+
+template<typename Fnc>
+void Matrix::apply(const Fnc &functor)
+{
+    for (auto& row : _grid)
+        for (auto& cell : row)
+            functor(cell);
 }
 
 
