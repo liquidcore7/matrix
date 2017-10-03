@@ -31,19 +31,13 @@ public:
     // example: [] (T& a) {a += 15}
     void apply(const Fnc&);
 
+    Matrix& operator+=(const Matrix&);
+    Matrix& operator*=(const T&);
 
+    Matrix operator+(const Matrix&, const Matrix&);
+    Matrix operator*(const Matrix&, const T&);
 
 };
-
-template <size_t N, size_t M, typename T>
-Matrix<N, M, T> operator+(const Matrix<N, M, T>&, const Matrix<N, M, T>&);
-
-
-template <size_t N, size_t M, typename T>
-Matrix<N, M, T> operator*(const Matrix<N, M, T>&, const T&);
-
-
-
 
 
 /* ********************************************************************************
@@ -81,6 +75,43 @@ void Matrix<N, M, T>::apply(const Fnc &functor)
         for (auto& cell : row)
             functor(cell);
 }
+
+template <size_t N, size_t M, typename T>
+Matrix<N, M, T> &Matrix<N, M, T>::operator+=(const Matrix<N, M, T> &rhs)
+{
+    for (size_t i = 0; i < N; ++i)
+        for (size_t j = 0; j < M; ++j)
+            _grid[i][j] += rhs._grid[i][j];
+    return *this;
+}
+
+template <size_t N, size_t M, typename T>
+Matrix<N, M, T> &Matrix<N, M, T>::operator*=(const T &scalar)
+{
+    this->apply([&scalar] (T& elem) {elem *= scalar;});
+    return *this;
+}
+
+template <size_t N, size_t M, typename T>
+Matrix<N, M, T> operator+(const Matrix<N, M, T>& lhs, const Matrix<N, M, T>& rhs)
+{
+    Matrix<N, M, T> local;
+    for (size_t i = 0; i < N; ++i)
+        for (size_t j = 0; j < M; ++j)
+            local._grid[i][j] = lhs._grid[i][j] + rhs._grid[i][j];
+    return local;
+};
+
+
+template <size_t N, size_t M, typename T>
+Matrix<N, M, T> operator*(const Matrix<N, M, T>&lhs, const T& scalar)
+{
+    Matrix<N, M, T> local;
+    for (size_t i = 0; i < N; ++i)
+        for (size_t j = 0; j < M; ++j)
+            local._grid[i][j] = lhs._grid[i][j] * scalar;
+    return local;
+};
 
 
 #endif
