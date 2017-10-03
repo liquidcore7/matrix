@@ -34,9 +34,6 @@ public:
     Matrix& operator+=(const Matrix&);
     Matrix& operator*=(const T&);
 
-    Matrix operator+(const Matrix&, const Matrix&);
-    Matrix operator*(const Matrix&, const T&);
-
 };
 
 
