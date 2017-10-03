@@ -48,6 +48,9 @@ public:
     Matrix& operator!()
     {*this *= -1;}
 
+    // seems too useless, rather delete nor implement
+    Matrix& operator*=(const Matrix<M, M, T>&);
+
     operator std::string() const;
 
     template <size_t Nf, size_t Mf, typename Tf>
@@ -154,6 +157,20 @@ Matrix<N, M, T> operator*(const Matrix<N, M, T>&lhs, const T& scalar)
     for (size_t i = 0; i < N; ++i)
         for (size_t j = 0; j < M; ++j)
             local._grid[i][j] = lhs._grid[i][j] * scalar;
+    return local;
+};
+
+template <size_t N, size_t L, size_t M, typename T>
+Matrix<N, M, T> operator*(const Matrix<N, L, T>& lhs, const Matrix<L, M, T>& rhs)
+{
+    Matrix<N, M, T> local(0);
+    for (size_t i = 0; i < N; ++i)
+        for (size_t j = 0; j < M; ++j)
+        {
+            for (int k = 0; k < L; ++k)
+                local.get(i, j) += lhs.get(i, k) * rhs.get(k, j);
+        }
+
     return local;
 };
 
