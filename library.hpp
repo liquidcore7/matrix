@@ -44,29 +44,31 @@ public:
  * ***************************************************************************** */
 
 template <size_t N, size_t M, typename T>
-Matrix::Matrix(std::istream &is)
+Matrix<N, M, T>::Matrix(std::istream &is)
 {
     for (size_t i = 0; i < N; ++i)
         for (size_t j = 0; j < M; ++j)
             is >> _grid[i][j];
 }
 
-Matrix::Matrix(const std::string &s)
+template <size_t N, size_t M, typename T>
+Matrix<N, M, T>::Matrix(const std::string &s)
 {
     std::istringstream iss(s);
-    Matrix::Matrix(iss);
+    Matrix<N, M, T>::Matrix(iss);
 }
 
 template <size_t N, size_t M, typename T>
-Matrix::Matrix(const T &init)
+Matrix<N, M, T>::Matrix(const T &init)
 {
     for(auto &row : _grid)
         for (auto &cell : row)
             cell = init;
 }
 
+template <size_t N, size_t M, typename T>
 template<typename Fnc>
-void Matrix::apply(const Fnc &functor)
+void Matrix<N, M, T>::apply(const Fnc &functor)
 {
     for (auto& row : _grid)
         for (auto& cell : row)
