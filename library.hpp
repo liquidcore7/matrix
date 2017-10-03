@@ -26,6 +26,16 @@ public:
         this->_grid = std::move(r._grid);
     }
 
+    inline T get(size_t i, size_t j) const
+    { return _grid[i][j]; }
+
+    inline T& get(size_t i, size_t j)
+    { return _grid[i][j]; }
+
+    inline decltype(_grid) asArray() const
+    { return _grid; }
+
+
     template <typename Fnc>
     // functor should be of the following signature: void functor(T&)
     // example: [] (T& a) {a += 15}
@@ -33,6 +43,16 @@ public:
 
     Matrix& operator+=(const Matrix&);
     Matrix& operator*=(const T&);
+
+    // requires T to be an integral type
+    Matrix& operator!()
+    {*this *= -1;}
+
+    operator std::string() const;
+
+    template <size_t Nf, size_t Mf, typename Tf>
+    // workaround required to avoid 'undefined reference' or '-Wno-non-template-friend', don`t touch
+    friend std::ostream& operator<<(std::ostream&, const Matrix<Nf, Mf, Tf>&);
 
 };
 
@@ -87,6 +107,33 @@ Matrix<N, M, T> &Matrix<N, M, T>::operator*=(const T &scalar)
 {
     this->apply([&scalar] (T& elem) {elem *= scalar;});
     return *this;
+}
+
+template <size_t N, size_t M, typename T>
+Matrix<N, M, T>::operator std::string() const
+{
+    std::stringstream ss;
+    ss << *this;
+    return ss.str();
+}
+
+template <size_t N, size_t M, typename T>
+std::istream& operator>>(std::istream &is, Matrix<N, M, T> &obj)
+{
+    obj.apply([&is] (T& cell) {is >> cell;});
+    return is;
+}
+
+template <size_t N, size_t M, typename T>
+std::ostream& operator<<(std::ostream &out, const Matrix<N, M, T> &obj)
+{
+    for (const auto& row : obj._grid)
+    {
+        for (const auto& cell : row)
+            out << cell << ' ';
+        out << '\n';
+    }
+    return out;
 }
 
 template <size_t N, size_t M, typename T>
