@@ -41,6 +41,9 @@ public:
     { return _grid; }
 
 
+    Matrix<M, N, T> transpose() const;
+
+
     template <typename Fnc>
     // functor should be of the following signature: void functor(T&)
     // example: [] (T& a) {a += 15}
@@ -75,6 +78,7 @@ struct SqMatrix : public Matrix<N, N, T>
             : Matrix<N, N, T>(a) {}
     explicit SqMatrix(std::array< std::array<T, N>, N >&& a)
     : Matrix<N, N, T>(std::move(a)) {}
+    SqMatrix(const Matrix<N, N, T>& m) : Matrix<N, N, T>(m) {}
 
     SqMatrix(const SqMatrix&r) = default;
     SqMatrix(SqMatrix&& r) noexcept = default;
@@ -83,7 +87,7 @@ struct SqMatrix : public Matrix<N, N, T>
     SqMatrix& operator=(SqMatrix&& r) noexcept = default;
 
 
-
+    SqMatrix inverse() const;
     virtual T det() const;
 };
 
@@ -109,7 +113,6 @@ namespace {
     class Det
     {
         SqMatrix<N, T> _data;
-        Det<N - 1, T> _minor(size_t i, size_t j) const;
 
     public:
 
@@ -117,12 +120,14 @@ namespace {
 
         explicit Det(SqMatrix<N, T> &&m) : _data(std::move(m)) {}
 
+        T _minor(size_t i, size_t j) const;
+
         T operator()() const;
     }; // class Det
 
 
     template<size_t N, typename T>
-    Det<N - 1, T> Det<N, T>::_minor(size_t i, size_t j) const
+    T Det<N, T>::_minor(size_t i, size_t j) const
     {
         std::array<std::array<T, N - 1>, N - 1> newMatrix;
         for (int im = 0, ishift = 0; im < N; ++im) {
@@ -138,7 +143,7 @@ namespace {
                 newMatrix[im - ishift][jm - jshift] = _data.get(im, jm);
             }
         }
-        return Det<N - 1, T>(SqMatrix<N - 1, T>(newMatrix));
+        return Det<N - 1, T>(std::move(SqMatrix<N - 1, T>(newMatrix))) ();
     }
 
     template <typename T>
@@ -150,6 +155,8 @@ namespace {
 
         explicit Det(SqMatrix<2, T> &&m) : _data(std::move(m)) {}
 
+        T _minor(size_t i, size_t j) const;
+
         T operator()() const;
     };
 
@@ -159,13 +166,22 @@ namespace {
         return _data.get(0, 0) * _data.get(1, 1) - _data.get(0, 1) * _data.get(1, 0);
     }
 
+    template <typename T>
+    T Det<2, T>::_minor(size_t i, size_t j) const
+    {
+        return _data.get(
+                i == 0 ? 1 : 0,
+                j == 0 ? 1 : 0
+        );
+    };
+
 
     template<size_t N, typename T>
     T Det<N, T>::operator()() const {
         T accu = 0;
         int sign = 1;
         for (size_t j = 0; j < N; ++j, sign *= -1)
-            accu += sign * _data.get(0, j) * _minor(0, j) ();
+            accu += sign * _data.get(0, j) * _minor(0, j);
         return accu;
     }
 
@@ -252,6 +268,16 @@ std::ostream& operator<<(std::ostream &out, const Matrix<N, M, T> &obj)
 }
 
 template <size_t N, size_t M, typename T>
+Matrix<M, N, T> Matrix<N, M, T>::transpose() const
+{
+    Matrix<M, N, T> transposed;
+    for (int i = 0; i < N; ++i)
+        for (int j = 0; j < M; ++j)
+            transposed._grid[j][i] = this->_grid[i][j];
+    return transposed;
+}
+
+template <size_t N, size_t M, typename T>
 Matrix<N, M, T> operator+(const Matrix<N, M, T>& lhs, const Matrix<N, M, T>& rhs)
 {
     Matrix<N, M, T> local;
@@ -268,7 +294,7 @@ Matrix<N, M, T> operator*(const Matrix<N, M, T>&lhs, const T& scalar)
     Matrix<N, M, T> local;
     for (size_t i = 0; i < N; ++i)
         for (size_t j = 0; j < M; ++j)
-            local._grid[i][j] = lhs._grid[i][j] * scalar;
+            local.get(i,j) = lhs.get(i,j) * scalar;
     return local;
 };
 
@@ -305,6 +331,20 @@ template <size_t N, typename T>
 T SqMatrix<N, T>::det() const
 {
     return Det<N, T>(*this)();
+}
+
+template <size_t N, typename T>
+SqMatrix<N, T> SqMatrix<N, T>::inverse() const
+{
+    T det = this->det();
+    if (det == 0)
+        throw std::logic_error("Inversion on matrix A with detA = 0");
+    SqMatrix<N, T> inverted;
+    int sign = 1;
+    for (size_t i = 0; i < N; ++i)
+        for (size_t j = 0; j < N; ++j, sign *= -1)
+            inverted.get(i, j) = sign * Det<N, T>(*this)._minor(i, j);
+    return (inverted * (1 / this->det()) ).transpose();
 };
 
 
