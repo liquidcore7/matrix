@@ -368,7 +368,7 @@ TriangleMatrix<N, T>::TriangleMatrix(const SqMatrix<N, T> &sq)
 template <size_t N, typename T>
 T TriangleMatrix<N, T>::det() const
 {
-    T accu = 0;
+    T accu = 1;
     for (int d = 0; d < N; ++d)
         accu *= this->get(d, d);
     return accu;
