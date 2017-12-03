@@ -13,7 +13,7 @@ protected:
 
 public:
     Matrix() = default;
-    explicit Matrix(std::istream&);
+    explicit Matrix(std::istream&&);
     explicit Matrix(const std::string&);
     explicit Matrix(const T&);
     explicit Matrix(const std::array< std::array<T, M>, N >& a)
@@ -32,10 +32,10 @@ public:
     }
 
     inline T get(size_t i, size_t j) const
-    { return _grid[i][j]; }
+    { return _grid.at(i).at(j); }
 
     inline T& get(size_t i, size_t j)
-    { return _grid[i][j]; }
+    { return _grid.at(i).at(j); }
 
     inline decltype(_grid) asArray() const
     { return _grid; }
@@ -45,16 +45,22 @@ public:
 
 
     template <typename Fnc>
-    // functor should be of the following signature: void functor(T&)
-    // example: [] (T& a) {a += 15}
+    // functor should be of the following signature: void functor(T&, const int, const int)
+    // example: [] (T& a, const size_t i, const size_t j) {a += 15}
     void apply(const Fnc&);
+
+    template <typename Fnc>
+    void apply(const Fnc&) const;
 
     Matrix& operator+=(const Matrix&);
     Matrix& operator*=(const T&);
 
     // requires T to be an integral type
     Matrix& operator!()
-    {*this *= -1;}
+    {
+        *this *= -1;
+        return *this;
+    }
 
     // seems too useless, rather delete nor implement
     // Matrix& operator*=(const Matrix<M, M, T>&);
@@ -71,7 +77,7 @@ template <size_t N, typename T>
 struct SqMatrix : public Matrix<N, N, T>
 {
     SqMatrix() = default;
-    explicit SqMatrix(std::istream& is) : Matrix<N, N, T>(is) {}
+    explicit SqMatrix(std::istream&& is) : Matrix<N, N, T>(std::move(is)) {}
     explicit SqMatrix(const std::string& str) : Matrix<N, N, T>(str) {}
     explicit SqMatrix(const T& val) : Matrix<N, N, T>(val) {}
     explicit SqMatrix(const std::array< std::array<T, N>, N >& a)
@@ -193,7 +199,7 @@ namespace {
  * ***************************************************************************** */
 
 template <size_t N, size_t M, typename T>
-Matrix<N, M, T>::Matrix(std::istream &is)
+Matrix<N, M, T>::Matrix(std::istream &&is)
 {
     for (size_t i = 0; i < N; ++i)
         for (size_t j = 0; j < M; ++j)
@@ -201,11 +207,8 @@ Matrix<N, M, T>::Matrix(std::istream &is)
 }
 
 template <size_t N, size_t M, typename T>
-Matrix<N, M, T>::Matrix(const std::string &s)
-{
-    std::istringstream iss(s);
-    Matrix<N, M, T>::Matrix(iss);
-}
+Matrix<N, M, T>::Matrix(const std::string &s) : Matrix(std::istringstream(s))
+{}
 
 template <size_t N, size_t M, typename T>
 Matrix<N, M, T>::Matrix(const T &init)
@@ -219,9 +222,18 @@ template <size_t N, size_t M, typename T>
 template<typename Fnc>
 void Matrix<N, M, T>::apply(const Fnc &functor)
 {
-    for (auto& row : _grid)
-        for (auto& cell : row)
-            functor(cell);
+    for (size_t i = 0; i < N; ++i)
+        for (size_t j = 0; j < M; ++j)
+            functor(_grid[i][j], i, j);
+}
+
+template <size_t N, size_t M, typename T>
+template <typename Fnc>
+void Matrix<N, M, T>::apply(const Fnc &functor) const
+{
+    for (size_t i = 0; i < N; ++i)
+        for (size_t j = 0; j < M; ++j)
+            functor(_grid[i][j], i, j);
 }
 
 template <size_t N, size_t M, typename T>
@@ -236,7 +248,7 @@ Matrix<N, M, T> &Matrix<N, M, T>::operator+=(const Matrix<N, M, T> &rhs)
 template <size_t N, size_t M, typename T>
 Matrix<N, M, T> &Matrix<N, M, T>::operator*=(const T &scalar)
 {
-    this->apply([&scalar] (T& elem) {elem *= scalar;});
+    this->apply([&scalar] (T& elem, const size_t i, const size_t j) {elem *= scalar;});
     return *this;
 }
 
@@ -251,19 +263,20 @@ Matrix<N, M, T>::operator std::string() const
 template <size_t N, size_t M, typename T>
 std::istream& operator>>(std::istream &is, Matrix<N, M, T> &obj)
 {
-    obj.apply([&is] (T& cell) {is >> cell;});
+    obj.apply([&is] (T& cell, const size_t i, const size_t j) {is >> cell;});
     return is;
 }
 
 template <size_t N, size_t M, typename T>
 std::ostream& operator<<(std::ostream &out, const Matrix<N, M, T> &obj)
 {
-    for (const auto& row : obj._grid)
-    {
-        for (const auto& cell : row)
-            out << cell << ' ';
-        out << '\n';
-    }
+    obj.apply([&out] (const T& elem, const size_t i, const size_t j)
+              {
+                  out << elem << ' ';
+                  if (j == M - 1)
+                      out << '\n';
+              });
+
     return out;
 }
 
@@ -273,7 +286,7 @@ Matrix<M, N, T> Matrix<N, M, T>::transpose() const
     Matrix<M, N, T> transposed;
     for (int i = 0; i < N; ++i)
         for (int j = 0; j < M; ++j)
-            transposed._grid[j][i] = this->_grid[i][j];
+            transposed.get(j, i) = this->_grid[i][j];
     return transposed;
 }
 
@@ -283,7 +296,7 @@ Matrix<N, M, T> operator+(const Matrix<N, M, T>& lhs, const Matrix<N, M, T>& rhs
     Matrix<N, M, T> local;
     for (size_t i = 0; i < N; ++i)
         for (size_t j = 0; j < M; ++j)
-            local._grid[i][j] = lhs._grid[i][j] + rhs._grid[i][j];
+            local.get(i, j) = lhs.get(i, j) + rhs.get(i, j);
     return local;
 };
 
@@ -373,6 +386,22 @@ T TriangleMatrix<N, T>::det() const
         accu *= this->get(d, d);
     return accu;
 }
+
+
+template <typename T, size_t N, size_t M>
+bool operator==(const Matrix<N, M, T>& l, const Matrix<N, M, T>& r)
+{
+    for (size_t i = 0; i < N; ++i)
+        for (size_t j = 0; j < M; ++j)
+            if (l.get(i, j) != r.get(i, j))
+                return false;
+    return true;
+};
+
+
+//TODO: lambda constructor
+//e.g   Matrix<2, 3, int> autoincr([&a] () {return a++;});
+//      SqMatrix<1000, size_t> random([] () {return rand();});
 
 
 #endif
